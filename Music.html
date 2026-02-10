@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Player Musik dengan Kontrol Volume</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #f7fbff, #eef6ff);
+      margin: 0;
+    }
+    .player {
+      background: white;
+      padding: 18px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(20,40,80,0.08);
+      width: 340px;
+    }
+    .title { font-weight: 600; margin-bottom: 8px; }
+    .controls { display:flex; gap:10px; align-items:center; margin-bottom:12px; }
+    button {
+      padding:8px 12px;
+      border-radius:8px;
+      border: 1px solid #d0d7e6;
+      background: #fff;
+      cursor: pointer;
+      font-weight:600;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    .row { display:flex; gap:8px; align-items:center; }
+    .small { font-size:13px; color:#45506b; }
+  </style>
+</head>
+<body>
+
+  <div class="player" role="region" aria-label="Player musik">
+    <div class="title">Contoh Player — Atur Volume</div>
+
+    <!-- Ganti src dengan file audio Anda -->
+    <audio id="audio" src="music.mp3" preload="auto"></audio>
+
+    <div class="controls">
+      <button id="playBtn" aria-pressed="false">Play</button>
+      <button id="pauseBtn" aria-pressed="false" style="display:none">Pause</button>
+      <button id="muteBtn">Mute</button>
+      <div style="flex:1" class="small" id="timeLabel">00:00 / 00:00</div>
+    </div>
+
+    <div class="row" style="flex-direction:column; gap:10px;">
+      <label class="small" for="volume">Volume: <span id="volLabel">100%</span></label>
+      <input id="volume" type="range" min="0" max="100" value="100" />
+    </div>
+  </div>
+
+<script>
+  const audio = document.getElementById('audio');
+  const playBtn = document.getElementById('playBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const muteBtn = document.getElementById('muteBtn');
+  const volume = document.getElementById('volume');
+  const volLabel = document.getElementById('volLabel');
+  const timeLabel = document.getElementById('timeLabel');
+
+  // Inisialisasi volume dari slider (value 0-100 -> audio.volume 0.0-1.0)
+  function setVolumeFromSlider() {
+    const v = Number(volume.value);
+    audio.volume = Math.max(0, Math.min(1, v / 100));
+    volLabel.textContent = Math.round(v) + '%';
+    // Ubah tombol mute bila perlu
+    if (audio.volume === 0) {
+      muteBtn.textContent = 'Unmute';
+    } else {
+      muteBtn.textContent = 'Mute';
+    }
+    // simpan preferensi (opsional)
+    try { localStorage.setItem('playerVolume', String(v)); } catch(e){}
+  }
+
+  // Load saved volume bila ada
+  try {
+    const saved = localStorage.getItem('playerVolume');
+    if (saved !== null) {
+      volume.value = Math.max(0, Math.min(100, Number(saved)));
+    }
+  } catch(e){}
+
+  setVolumeFromSlider();
+
+  // event slider
+  volume.addEventListener('input', setVolumeFromSlider);
+
+  // play/pause
+  playBtn.addEventListener('click', () => {
+    audio.play();
+  });
+  pauseBtn.addEventListener('click', () => {
+    audio.pause();
+  });
+
+  audio.addEventListener('play', () => {
+    playBtn.style.display = 'none';
+    pauseBtn.style.display = '';
+    playBtn.setAttribute('aria-pressed', 'true');
+  });
+  audio.addEventListener('pause', () => {
+    playBtn.style.display = '';
+    pauseBtn.style.display = 'none';
+    playBtn.setAttribute('aria-pressed', 'false');
+  });
+
+  // mute toggle
+  muteBtn.addEventListener('click', () => {
+    audio.muted = !audio.muted;
+    muteBtn.textContent = audio.muted ? 'Unmute' : 'Mute';
+    // jika unmuted tapi slider 0, set volume ke 50 default
+    if (!audio.muted && audio.volume === 0) {
+      volume.value = 50;
+      setVolumeFromSlider();
+    }
+  });
+
+  // update waktu (durasi / currentTime)
+  function formatTime(sec) {
+    if (!isFinite(sec)) return '00:00';
+    sec = Math.floor(sec);
+    const m = Math.floor(sec / 60).toString().padStart(2,'0');
+    const s = (sec % 60).toString().padStart(2,'0');
+    return `${m}:${s}`;
+  }
+
+  audio.addEventListener('timeupdate', () => {
+    timeLabel.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+  });
+  audio.addEventListener('loadedmetadata', () => {
+    timeLabel.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+  });
+
+  // keyboard shortcuts: space = play/pause, up/down volume
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (audio.paused) audio.play(); else audio.pause();
+    } else if (e.code === 'ArrowUp') {
+      e.preventDefault();
+      volume.value = Math.min(100, Number(volume.value) + 5);
+      setVolumeFromSlider();
+    } else if (e.code === 'ArrowDown') {
+      e.preventDefault();
+      volume.value = Math.max(0, Number(volume.value) - 5);
+      setVolumeFromSlider();
+    }
+  });
+</script>
+
+</body>
+</html>
